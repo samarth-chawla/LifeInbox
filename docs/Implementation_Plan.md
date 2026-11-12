@@ -34,13 +34,17 @@ The implementation uses Better Auth's PostgreSQL dialect and generated `auth` sc
 
 Migration `003_application_core.sql` adds the four core tables using the existing LifeInbox owner IDs and migration runner. Composite foreign keys enforce ownership on item-tag relationships. The server-only repositories use parameterized SQL and accept a shared transaction client for grouped writes. The PostgreSQL integration suite covers owner isolation, rollback and concurrent duplicate writes. See [test setup](../README.md#postgresql-integration-tests).
 
-## Phase 3 — Trial and storage entitlement policy
+## Phase 3 — Trial and storage entitlement policy (IMPLEMENTED)
 
 - **Objective and prerequisites.** Establish eligibility before exposing capture writes. Requires Phase 2 and agreement on trial start, post-trial permissions and the in-flight upload policy. Use an explicit test allowance until the product limit is approved.
 - **Likely files and database.** Entitlement service/repository, clock and policy tests, account status UI, `/me` response. Add trial/entitlement state and the owner usage row. Record start, configured duration, deadline, applicable allowance, status, end time and reason. Keep the eventual paid plan reference provider-neutral.
 - **Dependencies and routes.** Reuse PostgreSQL and `pg`. Extend `GET /api/v1/me` and use a shared service check for future capture routes. No checkout or subscription-management endpoint.
 - **Security and tests.** Use server time. End the trial at the earlier of the seven-day deadline or confirmed original bytes reaching the configurable allowance. Keep the end reason durable and prevent resets after space is freed. Test exact time and byte boundaries, concurrent checks, idempotent initialization and restriction decisions. Phase 6 connects real uploads to the same transaction.
 - **Acceptance and deferrals.** Account status reports the applicable allowance, deadline and end reason. The policy gates new creation without waiting for a scheduler and preserves existing data under the agreed policy. Defer payment, provider events, production quota/pricing defaults and upload transport.
+
+The trial starts once at the first successful verified sign-in. An existing signed-in owner starts on their first account request after rollout. Expiry blocks new saves and uploads while allowing read, search, export and deletion of existing data as those features ship. Recheck eligibility when an upload is finalized. If the trial has ended, discard the staged upload and release its reservation after cleanup. A valid upload that reaches the cap can finalize and end the trial in the same transaction.
+
+Migration `004_owner_trials.sql` records each owner's allowance, deadline, usage and end reason. The account page and `GET /api/v1/me` report the trial state, and the shared transaction guard supports future capture writes. Use `TRIAL_STORAGE_ALLOWANCE_BYTES` to test different allowances. The production allowance remains open.
 
 ## Phase 4 — Owner-scoped items and notes
 
@@ -164,11 +168,11 @@ Select hosting after measuring representative upload sizes, queue depth, OCR and
 ## Decisions still open
 
 - The free allowance in bytes, final paid pricing, and the future upgrade destination and billing provider.
-- Trial start trigger, behavior of in-flight uploads at the deadline, and the post-trial access and retention policy. Candidate defaults are one start at the first verified owner activation, eligibility recheck before upload finalization, and restricted creation with access to existing data, export and deletion under the approved policy.
+- Retention and recovery policies for existing data after the trial and for deleted items and accounts.
 - Supported document formats, per-file limits, parser and OCR engines/languages, export consistency and archive expiry, backup retention, and deletion audit/recovery rules.
 - Embedding and optional metadata providers, model/dimension/distance choice, consent granularity and retention of previously generated metadata or vectors after disablement, measured HNSW criteria, and hybrid evaluation targets.
 - Production web/DB/worker hosting, R2 confirmation, mail transport, operational limits, and monitoring. Node/package manager versions and test tooling are Phase 0 choices.
 
 ## Current handoff
 
-Phase 2 is implemented and ready for review. Phase 3 begins after review and agreement on the trial start trigger, post-trial permissions and in-flight upload policy.
+Phase 3 is implemented and ready for review. Phase 4 adds owner-scoped notes and uses the trial guard for new saves.

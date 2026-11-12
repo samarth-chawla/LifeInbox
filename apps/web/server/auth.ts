@@ -7,6 +7,7 @@ import { authPersistence } from "./auth-schema";
 import { findActiveOwnerId } from "./db/owners";
 import { getPool } from "./db/pool";
 import { getEnv } from "./env";
+import { readAccountTrial } from "./services/trials";
 
 const verificationCodeMinutes = 5;
 
@@ -62,6 +63,15 @@ function createAuth() {
         create: {
           before: async (session) => {
             if (!(await findActiveOwnerId(session.userId))) return false;
+          },
+          after: async (session, context) => {
+            if (context?.path !== "/sign-in/email") return;
+            try {
+              const ownerId = await findActiveOwnerId(session.userId);
+              if (ownerId) await readAccountTrial(getPool(), ownerId);
+            } catch {
+              console.error("LifeInbox trial initialization failed");
+            }
           },
         },
       },

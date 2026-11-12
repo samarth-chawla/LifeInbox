@@ -12,14 +12,3 @@ export async function findActiveOwnerId(authSubject: string) {
 
   return result.rows[0]?.ownerId ?? null;
 }
-
-export async function readActiveOwner(ownerId: string) {
-  const result = await getPool().query<{ ownerId: string; createdAt: Date }>(
-    `SELECT id AS "ownerId", created_at AS "createdAt"
-       FROM lifeinbox.owners
-      WHERE id = $1 AND active`,
-    [ownerId],
-  );
-
-  return result.rows[0] ?? null;
-}

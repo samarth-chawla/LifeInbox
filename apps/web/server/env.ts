@@ -77,3 +77,13 @@ let env: ReturnType<typeof readEnv> | undefined;
 export function getEnv() {
   return (env ??= readEnv());
 }
+
+export function getTrialAllowanceBytes(): number {
+  const configured = process.env.TRIAL_STORAGE_ALLOWANCE_BYTES?.trim();
+  if (!configured && process.env.NODE_ENV !== "production") return 100 * 1024 * 1024;
+  const bytes = Number(configured);
+  if (!configured || !/^\d+$/.test(configured) || !Number.isSafeInteger(bytes) || bytes <= 0) {
+    throw new ServerConfigError("TRIAL_STORAGE_ALLOWANCE_BYTES must be a positive integer in bytes");
+  }
+  return bytes;
+}

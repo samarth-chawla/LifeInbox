@@ -42,7 +42,7 @@ The initial accounting basis is validated original uploaded file bytes. Extracte
 
 ## 4. Trial State and Entitlements
 
-Use server time for the deadline. Preserve the earliest applicable end event and its reason even if enforcement is first evaluated on a later request. Access checks must remain correct at the deadline without a background task. Record paid entitlement changes separately when billing is introduced. The trial start trigger, in-flight upload behavior at expiration, and post-trial access and retention require policy confirmation. The proposed implementation rechecks eligibility at finalization and reconciles any staged object that cannot be accepted.
+Use server time for the deadline. Start a trial once on the first successful verified sign-in, or on the first account request after rollout for an existing signed-in owner. Snapshot the allowance at that point. Preserve the earliest applicable end event and its reason even if enforcement is first evaluated on a later request. Access checks remain correct at the deadline without a background task. After expiry, preserve read, search, export and deletion access to existing data and block new saves and uploads. Recheck eligibility at finalization and clean up staged objects that cannot be accepted before releasing their reservations. Record paid entitlement changes separately when billing is introduced.
 
 ## 5. Data Lifecycle
 

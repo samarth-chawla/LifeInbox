@@ -88,6 +88,7 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
       BETTER_AUTH_SECRET: randomBytes(48).toString("hex"),
       AUTH_SMTP_URL: `smtp://${host}:${smtp.server.address().port}`,
       AUTH_EMAIL_FROM: "lifeinbox@example.test",
+      TRIAL_STORAGE_ALLOWANCE_BYTES: "100",
       AUTH_TRUSTED_CLIENT_IP_HEADER: "x-lifeinbox-test-ip",
     },
     stdio: "ignore",
@@ -249,8 +250,14 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
     assert.equal((await auth("/sign-in/email-otp", { payload })).status, 404);
   });
 
+  const beforeSignIn = await db.query("SELECT owner_id FROM lifeinbox.owner_trials WHERE owner_id = $1", [firstOwner.owner_id]);
+  assert.equal(beforeSignIn.rowCount, 0, "Email verification alone must not start the trial");
   let firstSession = await signIn(first);
   const secondSession = await signIn(second);
+  const afterSignIn = await db.query("SELECT started_at FROM lifeinbox.owner_trials WHERE owner_id = $1", [firstOwner.owner_id]);
+  assert.equal(afterSignIn.rowCount, 1, "Successful sign-in must start the trial before the first account request");
+  await db.query("DELETE FROM lifeinbox.owner_trials WHERE owner_id = $1", [secondOwner.owner_id]);
+
   await t.test("protected requests use the authenticated owner and ignore spoofed IDs", async () => {
     const response = await request(`/api/v1/me?ownerId=${secondOwner.owner_id}`, {
       cookie: firstSession,
@@ -259,10 +266,17 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "no-store");
     const account = await response.json();
-    assert.deepEqual(Object.keys(account).sort(), ["createdAt", "ownerId"]);
+    assert.deepEqual(Object.keys(account).sort(), ["createdAt", "ownerId", "trial"]);
     assert.equal(account.ownerId, firstOwner.owner_id);
+    assert.equal(account.trial.startedAt, afterSignIn.rows[0].started_at.toISOString());
+    assert.equal(account.trial.allowanceBytes, 100);
+    assert.equal(account.trial.status, "active");
     const other = await request("/api/v1/me", { cookie: secondSession });
-    assert.equal((await other.json()).ownerId, secondOwner.owner_id);
+    const otherAccount = await other.json();
+    assert.equal(otherAccount.ownerId, secondOwner.owner_id);
+    assert.equal(otherAccount.trial.status, "active", "Existing sessions start their trial on the first account request");
+    const accountPage = await request("/account", { cookie: firstSession });
+    assert.match(await accountPage.text(), /Free trial active/);
 
     const status = await auth("/get-session", { cookie: firstSession });
     assert.deepEqual(await status.json(), { authenticated: true });
@@ -296,6 +310,23 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
     firstSession = await signIn(first, newPassword);
     const current = await request("/api/v1/me", { cookie: firstSession });
     assert.equal((await current.json()).ownerId, firstOwner.owner_id);
+  });
+
+  await t.test("an expired trial keeps the account available and reports why it ended", async () => {
+    await db.query(
+      `UPDATE lifeinbox.owner_trials SET started_at = now() - interval '168 hours', deadline = now()
+       WHERE owner_id = $1`,
+      [firstOwner.owner_id],
+    );
+    const response = await request("/api/v1/me", { cookie: firstSession });
+    assert.equal(response.status, 200);
+    const { trial } = await response.json();
+    assert.equal(trial.status, "ended");
+    assert.equal(trial.endReason, "time");
+    assert.equal(trial.endedAt, trial.deadline);
+    const page = await request("/account", { cookie: firstSession });
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /Free trial ended/);
   });
 
   await t.test("missing and inactive owners fail closed", async () => {

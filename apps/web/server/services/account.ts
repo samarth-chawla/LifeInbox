@@ -1,7 +1,7 @@
 import "server-only";
-import { readActiveOwner } from "../db/owners";
+import { getPool } from "../db/pool";
+import { readAccountTrial } from "./trials";
 
-export async function getAccount(ownerId: string) {
-  const owner = await readActiveOwner(ownerId);
-  return owner ? { ownerId: owner.ownerId, createdAt: owner.createdAt.toISOString() } : null;
+export function getAccount(ownerId: string) {
+  return readAccountTrial(getPool(), ownerId);
 }

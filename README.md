@@ -63,10 +63,11 @@ Create a dedicated local PostgreSQL database and set these values in `apps/web/.
 | `AUTH_SMTP_URL` | The configured `smtp:` or `smtps:` endpoint. Use a local inbox or a third-party SMTP relay. The app requires TLS for external SMTP servers. |
 | `AUTH_EMAIL_FROM` | The sender address accepted by the configured mail service. |
 | `AUTH_TRUSTED_CLIENT_IP_HEADER` | Optional. Set it only when a trusted ingress overwrites this header and clients cannot reach the app directly. Otherwise Better Auth uses a shared per-route rate-limit bucket. |
+| `TRIAL_STORAGE_ALLOWANCE_BYTES` | Positive byte allowance for new trials. Local development defaults to 100 MiB for testing. Set an explicit value before starting new trials in production. |
 
 Run `npm run db:migrate` before registration. The generated SQL creates Better Auth's `auth` schema, including its database rate-limit table. LifeInbox SQL adds the `lifeinbox` schema, stable owners, identity mappings and a trigger on `auth."user"`. The migration runner serializes runs and records checksums. Keep applied files immutable. For a Better Auth upgrade, generate and review a new migration against a disposable copy of the current schema. [Better Auth PostgreSQL](https://better-auth.com/docs/adapters/postgresql) · [Schema generation](https://better-auth.com/docs/concepts/database)
 
-Better Auth handles password hashing, verification, recovery, and cookie sessions. Verification emails contain a link and a six-digit code. Enter the code at `/verify-email` within five minutes, or request a fresh email from that page. The owner trigger inserts the LifeInbox owner and identity mapping in the transaction that inserts the auth user. Sign-in requires verified email and an active owner. Protected requests revalidate the persisted session, resolve the owner, and call account logic with the LifeInbox owner ID. `GET /api/v1/me` returns `ownerId` and `createdAt`. Missing sessions receive 401, and missing or inactive owners receive 403.
+Better Auth handles password hashing, verification, recovery, and cookie sessions. Verification emails contain a link and a six-digit code. Enter the code at `/verify-email` within five minutes, or request a fresh email from that page. The owner trigger inserts the LifeInbox owner and identity mapping in the transaction that inserts the auth user. Sign-in requires verified email and an active owner. Protected requests revalidate the persisted session, resolve the owner, and call account logic with the LifeInbox owner ID. `GET /api/v1/me` returns `ownerId`, `createdAt`, and `trial`. Missing sessions receive 401, and missing or inactive owners receive 403.
 
 Existing auth records without a valid owner mapping require operator repair. LifeInbox does not recreate an owner from an email address or a browser-provided ID. For production, use a migration role for DDL and grant the runtime role only the schema and table access needed for auth, owner lookup, and the provisioning trigger.
 
@@ -79,6 +80,12 @@ No production email provider is selected. The app logs delivery failures without
 The SQL migration runner applies `003_application_core.sql` after the auth and owner migrations. It creates `items`, `owner_settings`, `tags`, and `item_tags` in the `lifeinbox` schema. Items and tags use owner-qualified keys, and a tag assignment can only reference an item and tag under the same owner. Tag names are trimmed and compared case-sensitively within each owner. Owners without a settings row have external AI disabled.
 
 Server repositories take the resolved LifeInbox owner ID and a PostgreSQL query client. Use the existing pool for individual operations and pass the transaction client to every repository call in a group of writes.
+
+## Trial and storage usage
+
+Apply migration `004_owner_trials.sql` with `npm run db:migrate`. A verified owner's first successful sign-in starts their seven-day trial. An owner already signed in during rollout starts on their first account request. The allowance is fixed for that trial when it starts. The account page and `GET /api/v1/me` report usage, the deadline and the end reason.
+
+Use `withTrialCreation` for new saves and to recheck an upload before finalizing it. The callback runs in a transaction that locks the active owner. Storage usage changes check the deadline and allowance again in PostgreSQL. Phase 6 will add the reservation records, private storage and cleanup that feed those counters.
 
 ## PostgreSQL integration tests
 
