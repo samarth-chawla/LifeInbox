@@ -6,7 +6,7 @@ At planning time the repository contained project documentation only. Phase 0 es
 
 The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs and supported documents. It includes safe non-LLM extraction and OCR, optional AI metadata, job status and retry, owner-scoped lexical and semantic retrieval, the seven-day-or-storage trial, private downloads, complete export and secure account deletion. Start with keyword and metadata search, then ship semantic retrieval before MVP acceptance. Stage 3 hybrid ranking is planned as a follow-on because the approved MVP list calls for semantic search and omits hybrid search. Checkout and payment processing, Redis, BullMQ, separate vector databases, chat and RAG answers are outside MVP.
 
-## Phase 0 — Local project foundation
+## Phase 0 — Local project foundation (COMPLETE)
 
 - **Objective and prerequisites.** Establish a reproducible Next.js App Router foundation. Begin once implementation is authorized. Verify compatible Node.js, package manager and dependency versions against official docs and choose one lockfile. [Next.js setup](https://nextjs.org/docs/app/getting-started/installation)
 - **Likely files and database.** Root npm workspace manifest, lockfile, ignore and environment templates, and setup README. Place the App Router shell, strict TypeScript, ESLint, Tailwind and smoke test in `apps/web`. Keep the shared capture type in `packages/types`. No schema or database connection required.
@@ -14,7 +14,7 @@ The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs a
 - **Security and tests.** Ignore real environment files and build output, use placeholder values in examples, check client/server boundaries, and exercise a render smoke test. Run lint, type checking, tests and the production build locally.
 - **Acceptance and deferrals.** A clean checkout can install from its lockfile, start locally, render the shell and pass all checks without cloud accounts or secrets. Defer Better Auth, PostgreSQL wiring, migrations, features and deployment.
 
-## Phase 1 — Better Auth and stable LifeInbox owner
+## Phase 1 — Better Auth and stable LifeInbox owner (COMPLETE)
 
 - **Objective and prerequisites.** Provide registration, sign-in, email verification, recovery, sign-out and revocation. Requires Phase 0, local PostgreSQL, a test mail transport, and review of the current Better Auth docs. [App Router](https://better-auth.com/docs/integrations/next) · [PostgreSQL](https://better-auth.com/docs/adapters/postgresql)
 - **Likely files and database.** Auth pages, `apps/web/app/api/auth/[...all]/route.ts`, server auth/session and owner modules, and auth integration tests. Plan Better Auth's user/account/session/verification tables and minimal LifeInbox owner and unique identity mapping. Provision the owner idempotently and keep the auth subject at the boundary.
@@ -22,7 +22,9 @@ The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs a
 - **Security and tests.** Validate sessions in protected handlers. Test cookie flags, trusted origins, supported password hashing, verification, reset, abuse rate limits, session revocation, concurrent provisioning and signed-out or blocked accounts. Use server-only secrets and keep reset tokens out of logs.
 - **Acceptance and deferrals.** A verified user can sign in, recover access and consistently resolve the same LifeInbox owner. Invalid or revoked sessions cannot access the protected handler. Defer item management, optional auth plugins, subscriptions and full account cleanup.
 
-## Phase 2 — Application SQL and ownership constraints
+The implementation uses Better Auth's PostgreSQL dialect and generated `auth` schema. A trigger on `auth."user"` provisions the LifeInbox UUID and unique provider/subject mapping in the user-insert transaction. An active owner is required when a session is created and resolved again on protected requests. `GET /api/v1/me` reads only the resolved owner's account data. Migrations, the PostgreSQL 17 integration suite with a loopback SMTP inbox, lint, strict TypeScript, the production build and the shell smoke test passed. See the [root README](../README.md#authentication-setup) for environment, migrations and tests. Production SMTP and ingress configuration remain open.
+
+## Phase 2 — Application SQL and ownership constraints (NEXT)
 
 - **Objective and prerequisites.** Establish the application persistence and transaction patterns after Phase 1. Decide the reviewed direct-SQL migration workflow and test database isolation.
 - **Likely files and database.** Server DB pool/transaction modules, owner-scoped repositories, SQL migration directory, DB fixtures and integration tests. Add core items, owner settings, tags and item-tag relationships. Add module-specific tables in the phases that need them.
@@ -165,6 +167,6 @@ Select hosting after measuring representative upload sizes, queue depth, OCR and
 - Embedding and optional metadata providers, model/dimension/distance choice, consent granularity and retention of previously generated metadata or vectors after disablement, measured HNSW criteria, and hybrid evaluation targets.
 - Production web/DB/worker hosting, R2 confirmation, mail transport, operational limits, and monitoring. Node/package manager versions and test tooling are Phase 0 choices.
 
-## Recommended first implementation
+## Current handoff
 
-Start with Phase 0. A clean checkout should install from one lockfile, start the local Next.js App Router shell, and pass lint, type checks, the smoke test and the production build. Keep real secrets and generated build output out of version control. The phase should require no remote services and should finish before authentication, schema changes, feature work or deployment.
+Phase 0 and Phase 1 are complete locally. Phase 2 is next. Keep its application SQL work separate from the verified authentication and owner boundary.

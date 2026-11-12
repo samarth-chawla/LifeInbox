@@ -1,4 +1,5 @@
 import type { CaptureKind } from "@lifeinbox/types";
+import Link from "next/link";
 
 const captureLabels = {
   note: "Text notes",
@@ -19,6 +20,9 @@ export default function HomePage() {
           <span className="h-4 w-3 rounded-xs border border-paper" />
         </span>
         <span className="text-lg font-semibold tracking-tight">LifeInbox</span>
+        <Link href="/sign-in" className="ml-auto text-sm font-semibold text-accent underline-offset-4 hover:underline">
+          Sign in
+        </Link>
       </header>
 
       <main className="grid items-start gap-12 py-14 sm:py-20 md:grid-cols-[1.35fr_1fr] md:gap-12 lg:gap-20 lg:py-28">

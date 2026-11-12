@@ -11,7 +11,9 @@ export default defineConfig([
     extends: [typescript.configs.recommended, next.configs["core-web-vitals"]],
   },
   {
-    files: ["tests/**/*.mjs"],
-    languageOptions: { globals: { AbortSignal: "readonly", fetch: "readonly" } },
+    files: ["scripts/**/*.mjs", "tests/**/*.mjs"],
+    languageOptions: {
+      globals: { AbortSignal: "readonly", Buffer: "readonly", console: "readonly", fetch: "readonly", process: "readonly", URL: "readonly" },
+    },
   },
 ]);

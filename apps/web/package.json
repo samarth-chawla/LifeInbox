@@ -2,18 +2,27 @@
   "name": "@lifeinbox/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test"
+    "test": "node --test tests/home.test.mjs",
+    "test:auth": "node --test tests/auth/integration.test.mjs",
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
+    "db:auth-schema": "node --conditions=react-server --env-file-if-exists=.env.local scripts/generate-auth-schema.mjs"
   },
   "dependencies": {
+    "better-auth": "1.7.22",
+    "kysely": "0.29.8",
     "next": "16.4.6",
+    "nodemailer": "10.5.0",
+    "pg": "8.23.1",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -21,9 +30,12 @@
     "@next/eslint-plugin-next": "16.4.6",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^10.14.0",
+    "smtp-server": "3.21.4",
     "tailwindcss": "^4.1.0",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.72.2"
