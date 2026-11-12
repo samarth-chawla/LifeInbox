@@ -493,7 +493,7 @@ LifeInbox is a personal information storage and retrieval platform. Its MVP supp
 
 ### 2. Repository and Application Structure
 
-This repository currently contains project documentation under `docs/`. The approved architecture is a single Next.js application using TypeScript, Tailwind CSS and Route Handlers. Use Route Handlers → services → repositories/data access where useful. Keep Better Auth, database, storage, processing and optional AI modules server-side. The PostgreSQL-backed job runner shares application logic. Its execution model and exact directory layout remain open.
+The repository uses npm workspaces with one root lockfile. `apps/web` holds the single Next.js App Router application. `packages/types` provides client-safe types that future clients can share without moving the web app. Keep runtime validation in the owning app until there is a shared client-safe rule. Use Route Handlers → services → repositories/data access where useful. Keep Better Auth, database, storage, processing and optional AI modules server-side. The PostgreSQL-backed job runner shares application logic. Its execution model remains open.
 
 Start with the [PRD](01_PRD_LifeInbox.md), [architecture](03_Architecture_Data_Flow.md), [security requirements](07_Security_Privacy.md) and [roadmap](08_Roadmap_MVP.md). The [complete documentation](LifeInbox_Complete_Documentation.md) mirrors the individual Markdown chapters. The [implementation plan](Implementation_Plan.md) records phase boundaries and acceptance criteria. The original DOCX files are historical copies.
 

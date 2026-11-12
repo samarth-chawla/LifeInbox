@@ -1,6 +1,8 @@
 # LifeInbox Repository Instructions
 
 - Read the [PRD](docs/01_PRD_LifeInbox.md), [architecture](docs/03_Architecture_Data_Flow.md), [security requirements](docs/07_Security_Privacy.md), and [implementation plan](docs/Implementation_Plan.md) before changing the relevant area.
+- Use npm workspaces and one root `package-lock.json`. Keep the Next.js App Router app in `apps/web`. Share only client-safe code or types with a concrete use.
+- For framework behavior, consult the docs bundled with the installed Next.js version in `node_modules/next/dist/docs/`.
 - Use one Next.js App Router application with TypeScript, Tailwind CSS and Route Handlers. Use Route Handlers → services → repositories where useful. Do not add Express or complex microservices.
 - Use PostgreSQL with parameterized SQL through `pg`, Better Auth with PostgreSQL persistence, and pgvector for embeddings. Do not add Prisma or a separate vector database.
 - Centralize Better Auth session validation and resolve a stable LifeInbox owner before calling services. Scope user-owned queries, search, jobs, files, exports and entitlements to that owner. Keep auth provider IDs at the identity boundary.

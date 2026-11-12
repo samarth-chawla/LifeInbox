@@ -1,0 +1,25 @@
+{
+  "name": "lifeinbox",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "npm@12.2.0",
+  "engines": {
+    "node": "^24.0.0",
+    "npm": ">=11"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@lifeinbox/web --",
+    "build": "npm run build --workspace=@lifeinbox/web --",
+    "start": "npm run start --workspace=@lifeinbox/web --",
+    "lint": "npm run lint --workspace=@lifeinbox/web --",
+    "typecheck": "npm run typecheck --workspace=@lifeinbox/web --",
+    "test": "npm run test --workspace=@lifeinbox/web --"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  }
+}

@@ -2,14 +2,14 @@
 
 ## Baseline and scope
 
-The repository currently contains 11 original DOCX files in `docs/`, their 11 active Markdown counterparts, and the root `AGENTS.md`. The original Git tree contains only the DOCX files. The worktree has no application source, package manifest, lockfile, declared or installed project dependencies, Next.js App Router tree, components, styles, app or environment configuration, database code or migrations, test harness, CI configuration, or deployment files. The paths below are proposed. This plan creates no application artifacts.
+At planning time the repository contained project documentation only. Phase 0 establishes the local npm workspace and shell described in the [root README](../README.md). Later source paths are proposed.
 
 The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs and supported documents. It includes safe non-LLM extraction and OCR, optional AI metadata, job status and retry, owner-scoped lexical and semantic retrieval, the seven-day-or-storage trial, private downloads, complete export and secure account deletion. Start with keyword and metadata search, then ship semantic retrieval before MVP acceptance. Stage 3 hybrid ranking is planned as a follow-on because the approved MVP list calls for semantic search and omits hybrid search. Checkout and payment processing, Redis, BullMQ, separate vector databases, chat and RAG answers are outside MVP.
 
 ## Phase 0 — Local project foundation
 
 - **Objective and prerequisites.** Establish a reproducible Next.js App Router foundation. Begin once implementation is authorized. Verify compatible Node.js, package manager and dependency versions against official docs and choose one lockfile. [Next.js setup](https://nextjs.org/docs/app/getting-started/installation)
-- **Likely files and database.** Root `package.json`, lockfile, `tsconfig.json`, Next.js and lint configuration, Tailwind setup, `.gitignore`, example environment file, and `src/app/layout.tsx`, `page.tsx`, and global styles. Document how to run checks. No schema or database connection required.
+- **Likely files and database.** Root npm workspace manifest, lockfile, ignore and environment templates, and setup README. Place the App Router shell, strict TypeScript, ESLint, Tailwind and smoke test in `apps/web`. Keep the shared capture type in `packages/types`. No schema or database connection required.
 - **Dependencies and routes.** Next.js, React, TypeScript, Tailwind CSS, lint tooling and a minimal test runner. Only the shell route `/`; establish a convention for later `/api/v1` handlers.
 - **Security and tests.** Ignore real environment files and build output, use placeholder values in examples, check client/server boundaries, and exercise a render smoke test. Run lint, type checking, tests and the production build locally.
 - **Acceptance and deferrals.** A clean checkout can install from its lockfile, start locally, render the shell and pass all checks without cloud accounts or secrets. Defer Better Auth, PostgreSQL wiring, migrations, features and deployment.
@@ -17,7 +17,7 @@ The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs a
 ## Phase 1 — Better Auth and stable LifeInbox owner
 
 - **Objective and prerequisites.** Provide registration, sign-in, email verification, recovery, sign-out and revocation. Requires Phase 0, local PostgreSQL, a test mail transport, and review of the current Better Auth docs. [App Router](https://better-auth.com/docs/integrations/next) · [PostgreSQL](https://better-auth.com/docs/adapters/postgresql)
-- **Likely files and database.** Auth pages, `src/app/api/auth/[...all]/route.ts`, server auth/session and owner modules, and auth integration tests. Plan Better Auth's user/account/session/verification tables and minimal LifeInbox owner and unique identity mapping. Provision the owner idempotently and keep the auth subject at the boundary.
+- **Likely files and database.** Auth pages, `apps/web/app/api/auth/[...all]/route.ts`, server auth/session and owner modules, and auth integration tests. Plan Better Auth's user/account/session/verification tables and minimal LifeInbox owner and unique identity mapping. Provision the owner idempotently and keep the auth subject at the boundary.
 - **Dependencies and routes.** Better Auth, `pg`, and a mail transport. Better Auth endpoints and a minimal protected `GET /api/v1/me` use one centralized request-to-owner path. Entitlement fields are added in Phase 3.
 - **Security and tests.** Validate sessions in protected handlers. Test cookie flags, trusted origins, supported password hashing, verification, reset, abuse rate limits, session revocation, concurrent provisioning and signed-out or blocked accounts. Use server-only secrets and keep reset tokens out of logs.
 - **Acceptance and deferrals.** A verified user can sign in, recover access and consistently resolve the same LifeInbox owner. Invalid or revoked sessions cannot access the protected handler. Defer item management, optional auth plugins, subscriptions and full account cleanup.
