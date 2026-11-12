@@ -24,13 +24,15 @@ The MVP covers manual capture of notes, URLs, images and screenshots, and PDFs a
 
 The implementation uses Better Auth's PostgreSQL dialect and generated `auth` schema. A trigger on `auth."user"` provisions the LifeInbox UUID and unique provider/subject mapping in the user-insert transaction. An active owner is required when a session is created and resolved again on protected requests. `GET /api/v1/me` reads only the resolved owner's account data. Migrations, the PostgreSQL 17 integration suite with a loopback SMTP inbox, lint, strict TypeScript, the production build and the shell smoke test passed. See the [root README](../README.md#authentication-setup) for environment, migrations and tests. Production SMTP and ingress configuration remain open.
 
-## Phase 2 — Application SQL and ownership constraints (NEXT)
+## Phase 2 — Application SQL and ownership constraints (IMPLEMENTED)
 
 - **Objective and prerequisites.** Establish the application persistence and transaction patterns after Phase 1. Decide the reviewed direct-SQL migration workflow and test database isolation.
 - **Likely files and database.** Server DB pool/transaction modules, owner-scoped repositories, SQL migration directory, DB fixtures and integration tests. Add core items, owner settings, tags and item-tag relationships. Add module-specific tables in the phases that need them.
 - **Dependencies and routes.** Reuse `pg`, PostgreSQL and the test runner. Add a reviewed SQL migration runner or script as needed. This phase adds no public API routes.
 - **Security and tests.** Parameterize SQL values and allow-list dynamic sort fields. Use owner-qualified constraints and repository tests that reject wrong-owner reads and relationships. Exercise rollback and concurrent duplicate writes against PostgreSQL.
 - **Acceptance and deferrals.** A clean test database can apply the reviewed baseline and repository tests prove isolation. Defer Prisma, jobs, object storage, vector indexes and UI.
+
+Migration `003_application_core.sql` adds the four core tables using the existing LifeInbox owner IDs and migration runner. Composite foreign keys enforce ownership on item-tag relationships. The server-only repositories use parameterized SQL and accept a shared transaction client for grouped writes. The PostgreSQL integration suite covers owner isolation, rollback and concurrent duplicate writes. See [test setup](../README.md#postgresql-integration-tests).
 
 ## Phase 3 — Trial and storage entitlement policy
 
@@ -169,4 +171,4 @@ Select hosting after measuring representative upload sizes, queue depth, OCR and
 
 ## Current handoff
 
-Phase 0 and Phase 1 are complete locally. Phase 2 is next. Keep its application SQL work separate from the verified authentication and owner boundary.
+Phase 2 is implemented and ready for review. Phase 3 begins after review and agreement on the trial start trigger, post-trial permissions and in-flight upload policy.

@@ -26,6 +26,7 @@ Open [LifeInbox locally](http://localhost:3000). The shell runs without service 
 | `npm run db:migrate` | Apply tracked SQL to the PostgreSQL database in `DATABASE_URL`. |
 | `npm run db:auth-schema` | Print SQL from Better Auth's schema generator for the configured database. Review the output before using it as a migration. |
 | `npm run test:auth` | Run the PostgreSQL and HTTP authentication integration tests with a local test inbox. |
+| `npm run test:db` | Run the PostgreSQL repository, ownership, and transaction integration tests. |
 | `npm ls --workspaces --depth=0` | Inspect the workspace packages and their direct dependencies. |
 
 Each root application script delegates to `@lifeinbox/web`. To run a command directly, use `npm run <script> --workspace=@lifeinbox/web`.
@@ -73,8 +74,16 @@ Registration and recovery require working SMTP delivery. Mailpit can capture mes
 
 No production email provider is selected. The app logs delivery failures without email addresses, links or tokens. It never marks an address verified on delivery failure.
 
-## Auth integration tests
+## Application SQL
 
-Use a dedicated PostgreSQL database whose name ends in `_test`. In a separate terminal, set `LIFEINBOX_TEST_DATABASE_URL` to that database and set `DATABASE_URL` to the same URL for migration. Run `npm run db:migrate`, then `npm run test:auth`. Stop any web development server in this checkout first. The suite starts its own loopback Next.js server and SMTP inbox, creates disposable accounts, and deliberately invalidates sessions and mappings in the test database. A missing test database fails the suite. The separate `npm test` command remains the Phase 0 shell smoke test.
+The SQL migration runner applies `003_application_core.sql` after the auth and owner migrations. It creates `items`, `owner_settings`, `tags`, and `item_tags` in the `lifeinbox` schema. Items and tags use owner-qualified keys, and a tag assignment can only reference an item and tag under the same owner. Tag names are trimmed and compared case-sensitively within each owner. Owners without a settings row have external AI disabled.
+
+Server repositories take the resolved LifeInbox owner ID and a PostgreSQL query client. Use the existing pool for individual operations and pass the transaction client to every repository call in a group of writes.
+
+## PostgreSQL integration tests
+
+Use a dedicated PostgreSQL database whose name ends in `_test`. In a separate terminal, set `LIFEINBOX_TEST_DATABASE_URL` to that database and set `DATABASE_URL` to the same URL for migration. Run `npm run db:migrate`, then `npm run test:db` for the SQL repository suite. The SQL tests connect directly to PostgreSQL.
+
+For `npm run test:auth`, stop any web development server in this checkout first. The suite starts its own loopback Next.js server and SMTP inbox, creates disposable accounts, and deliberately invalidates sessions and mappings in the test database. Both suites require the dedicated test database. The separate `npm test` command remains the Phase 0 shell smoke test.
 
 See [AGENTS.md](AGENTS.md), the [architecture](docs/03_Architecture_Data_Flow.md), and the [implementation plan](docs/Implementation_Plan.md).
