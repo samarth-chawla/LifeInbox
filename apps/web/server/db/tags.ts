@@ -32,3 +32,21 @@ export async function listItemTags(db: DatabaseQuery, ownerId: string, itemId: s
   );
   return result.rows;
 }
+
+export async function replaceItemTags(db: DatabaseQuery, ownerId: string, itemId: string, names: string[]) {
+  await db.query(
+    `WITH wanted AS (
+       INSERT INTO lifeinbox.tags (owner_id, name)
+       SELECT $1, name FROM unnest($3::text[]) AS input(name)
+       ON CONFLICT (owner_id, name) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id
+     ), removed AS (
+       DELETE FROM lifeinbox.item_tags
+        WHERE owner_id = $1 AND item_id = $2 AND tag_id NOT IN (SELECT id FROM wanted)
+     )
+     INSERT INTO lifeinbox.item_tags (owner_id, item_id, tag_id)
+     SELECT $1, $2, id FROM wanted
+     ON CONFLICT (owner_id, item_id, tag_id) DO NOTHING`,
+    [ownerId, itemId, names],
+  );
+}

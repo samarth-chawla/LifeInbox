@@ -25,6 +25,12 @@ Better Auth serves sign-up, sign-in, email verification, recovery, sign-out and 
 | PATCH | `/api/v1/items/:id` | Update allowed content, titles, tags and other editable metadata. Reindex affected fields. |
 | DELETE | `/api/v1/items/:id` | Remove access and initiate cleanup of originals and derived data. |
 
+Phase 4 implements text notes. Create with `{ "kind": "note", "title": "...", "noteText": "...", "tags": ["..."] }`. PATCH accepts any subset of `title`, `noteText`, and `tags`. An empty tag array removes all tag assignments. Create and edit return `{ item }` with the saved note and tags. A successful delete returns 204.
+
+The list returns `{ items, page, hasMore }` with 20 note summaries per page, ordered newest first. Use the optional one-based `page` query parameter. Detail returns `{ item }`. A note from another owner or a different item kind is unavailable through the notes API. An ended trial returns `403 TRIAL_ENDED` on create and edit. Read and delete access remains available.
+
+Titles allow up to 200 characters, note text up to 50,000, and each note up to 20 tags of 50 characters each. Tag names are trimmed, case-sensitive, and may not contain commas, which the notes form uses as separators.
+
 For processing status, return the current state and a safe error code if available. A proposed `POST /api/v1/items/:id/retry` accepts an eligible owner-scoped retry and deduplicates concurrent requests.
 
 ## 4. Files

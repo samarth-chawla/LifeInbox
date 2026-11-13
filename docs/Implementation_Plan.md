@@ -46,13 +46,15 @@ The trial starts once at the first successful verified sign-in. An existing sign
 
 Migration `004_owner_trials.sql` records each owner's allowance, deadline, usage and end reason. The account page and `GET /api/v1/me` report the trial state, and the shared transaction guard supports future capture writes. Use `TRIAL_STORAGE_ALLOWANCE_BYTES` to test different allowances. The production allowance remains open.
 
-## Phase 4 — Owner-scoped items and notes
+## Phase 4 — Owner-scoped items and notes (IMPLEMENTED)
 
 - **Objective and prerequisites.** Deliver manual text capture and editable titles and tags on top of Phases 1–3.
 - **Likely files and database.** Item and tag UI, Route Handlers, services and repositories. Reuse core tables for note content, title, tags and source revision. Add columns only where a reviewed contract needs them.
 - **Dependencies and routes.** Reuse Next.js and `pg`. Implement `POST/GET /api/v1/items` and `GET/PATCH/DELETE /api/v1/items/:id` for supported operations.
 - **Security and tests.** Validate request payloads, scope IDs and associations to the owner, apply entitlement checks to creation and render text safely. Test CRUD, cross-owner ID guessing, forbidden writes after trial expiry and edit/delete behavior.
 - **Acceptance and deferrals.** A signed-in owner can create, edit, tag and view their own notes. Another account cannot read or alter them. Defer URL fetches, uploads, search ranking and AI.
+
+The notes page and item API use the existing items and tags tables. Note content and tag assignments save in a single transaction. The trial guard protects creation and edits, while reads and deletion remain available after expiry. Deleting a text note removes its tag assignments. See the [implemented API contract](05_API_Specification.md#3-items).
 
 ## Phase 5 — PostgreSQL jobs and safe URL capture
 
@@ -175,4 +177,4 @@ Select hosting after measuring representative upload sizes, queue depth, OCR and
 
 ## Current handoff
 
-Phase 3 is implemented and ready for review. Phase 4 adds owner-scoped notes and uses the trial guard for new saves.
+Phase 4 is implemented and ready for review. Phase 5 adds URL capture and background extraction.

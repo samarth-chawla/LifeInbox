@@ -44,7 +44,7 @@ function sessionCookie(response) {
   return cookie.split(";", 1)[0];
 }
 
-test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t) => {
+test("Authentication and owner-scoped routes against PostgreSQL", { timeout: 120_000 }, async (t) => {
   assert.ok(databaseUrl, "Set LIFEINBOX_TEST_DATABASE_URL to a dedicated migrated database");
   const db = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 5_000 });
   t.after(() => db.end());
@@ -111,9 +111,9 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
   const first = `first-${randomUUID()}@example.test`;
   const second = `second-${randomUUID()}@example.test`;
 
-  function request(path, { payload, cookie, headers = {} } = {}) {
+  function request(path, { payload, cookie, headers = {}, method = payload === undefined ? "GET" : "POST" } = {}) {
     return fetch(new URL(path, base), {
-      method: payload === undefined ? "GET" : "POST",
+      method,
       redirect: "manual",
       headers: {
         Origin: base,
@@ -312,6 +312,98 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
     assert.equal((await current.json()).ownerId, firstOwner.owner_id);
   });
 
+  const itemsPath = "/api/v1/items";
+  const noteDraft = { kind: "note", title: "Private note", noteText: "A private <em>example</em>.", tags: [" Work ", "Work", "Reading"] };
+  let notePath;
+  let notePage;
+
+  await t.test("notes require a session, validate input and support editing and tag replacement", async () => {
+    assert.equal((await request(itemsPath)).status, 401);
+    assert.equal((await request("/notes")).status, 307);
+    assert.equal((await request(itemsPath, {
+      payload: noteDraft, cookie: firstSession, headers: { Origin: "https://untrusted.example" },
+    })).status, 403);
+    for (const payload of [
+      { ...noteDraft, ownerId: secondOwner.owner_id },
+      { ...noteDraft, noteText: " " },
+      { ...noteDraft, kind: "url" },
+      { ...noteDraft, tags: ["invalid,tag"] },
+    ]) {
+      assert.equal((await request(itemsPath, { payload, cookie: firstSession })).status, 400);
+    }
+    assert.equal((await request(itemsPath, {
+      payload: { ...noteDraft, noteText: "x".repeat(1024 * 1024) }, cookie: firstSession,
+    })).status, 413);
+
+    const saved = await request(itemsPath, { payload: noteDraft, cookie: firstSession });
+    assert.equal(saved.status, 201);
+    assert.equal(saved.headers.get("cache-control"), "no-store");
+    const { item } = await saved.json();
+    assert.deepEqual(item.tags, ["Reading", "Work"]);
+    assert.equal(item.noteText, noteDraft.noteText);
+    assert.equal(item.sourceRevision, 1);
+    notePath = `${itemsPath}/${item.id}`;
+    notePage = `/notes?note=${item.id}`;
+
+    const edited = await request(notePath, {
+      method: "PATCH", payload: { title: "Edited note", noteText: "Edited <em>example</em>.", tags: ["Work", "Later"] },
+      cookie: firstSession,
+    });
+    assert.equal(edited.status, 200);
+    const update = (await edited.json()).item;
+    assert.equal(update.title, "Edited note");
+    assert.equal(update.sourceRevision, 2);
+    assert.deepEqual(update.tags, ["Later", "Work"]);
+    const cleared = await request(notePath, { method: "PATCH", payload: { tags: [] }, cookie: firstSession });
+    assert.equal(cleared.status, 200);
+    const clearedItem = (await cleared.json()).item;
+    assert.deepEqual(clearedItem.tags, []);
+    assert.equal(clearedItem.sourceRevision, 2);
+    const detail = await request(notePath, { cookie: firstSession });
+    assert.equal(detail.status, 200);
+    assert.deepEqual((await detail.json()).item, clearedItem);
+    const page = await request(notePage, { cookie: firstSession });
+    const html = await page.text();
+    assert.equal(page.status, 200);
+    assert.match(html, /Save note/);
+    assert.match(html, /Edited &lt;em&gt;example&lt;\/em&gt;/);
+  });
+
+  await t.test("notes cannot be read, changed or deleted using another owner's session", async () => {
+    const response = await request(itemsPath, { cookie: secondSession });
+    assert.deepEqual((await response.json()).items, []);
+    assert.equal((await request(notePath, { cookie: secondSession })).status, 404);
+    assert.equal((await request(notePath, { method: "PATCH", payload: { title: "Wrong owner" }, cookie: secondSession })).status, 404);
+    assert.equal((await request(notePath, { method: "DELETE", cookie: secondSession })).status, 404);
+    const page = await request(notePage, { cookie: secondSession });
+    const html = await page.text();
+    assert.match(html, /Note unavailable/);
+    assert.doesNotMatch(html, /Edited note/);
+    assert.equal((await request(notePath, { cookie: firstSession })).status, 200);
+  });
+
+  await t.test("note lists are bounded and exclude other item kinds", async () => {
+    await db.query(
+      `INSERT INTO lifeinbox.items (owner_id, kind, title, note_text)
+       SELECT $1, 'note', 'Note ' || n, 'Fixture' FROM generate_series(1, 20) AS n`,
+      [firstOwner.owner_id],
+    );
+    const { rows: [url] } = await db.query(
+      `INSERT INTO lifeinbox.items (owner_id, kind, title, original_url)
+       VALUES ($1, 'url', 'A URL', 'https://example.test') RETURNING id`,
+      [firstOwner.owner_id],
+    );
+    const firstPage = await request(itemsPath, { cookie: firstSession }).then((response) => response.json());
+    assert.equal(firstPage.items.length, 20);
+    assert.equal(firstPage.hasMore, true);
+    assert.ok(firstPage.items.every((item) => item.kind === "note" && !("noteText" in item)));
+    const secondPage = await request(`${itemsPath}?page=2`, { cookie: firstSession }).then((response) => response.json());
+    assert.equal(secondPage.items.length, 1);
+    assert.equal(secondPage.hasMore, false);
+    assert.equal((await request(`${itemsPath}/${url.id}`, { cookie: firstSession })).status, 404);
+    assert.equal((await request(`${itemsPath}/invalid`, { cookie: firstSession })).status, 400);
+  });
+
   await t.test("an expired trial keeps the account available and reports why it ended", async () => {
     await db.query(
       `UPDATE lifeinbox.owner_trials SET started_at = now() - interval '168 hours', deadline = now()
@@ -327,6 +419,22 @@ test("Phase 1 authentication against PostgreSQL", { timeout: 120_000 }, async (t
     const page = await request("/account", { cookie: firstSession });
     assert.equal(page.status, 200);
     assert.match(await page.text(), /Free trial ended/);
+  });
+
+  await t.test("expiry prevents new notes and edits but allows reading and deleting existing notes", async () => {
+    const denied = await request(itemsPath, { payload: noteDraft, cookie: firstSession });
+    assert.equal(denied.status, 403);
+    assert.deepEqual(await denied.json(), { code: "TRIAL_ENDED" });
+    const edit = await request(notePath, { method: "PATCH", payload: { title: "Expired edit" }, cookie: firstSession });
+    assert.equal(edit.status, 403);
+    assert.deepEqual(await edit.json(), { code: "TRIAL_ENDED" });
+    assert.equal((await request(notePath, { cookie: firstSession })).status, 200);
+    const page = await request(notePage, { cookie: firstSession });
+    const html = await page.text();
+    assert.match(html, /Delete note/);
+    assert.doesNotMatch(html, /Save note/);
+    assert.equal((await request(notePath, { method: "DELETE", cookie: firstSession })).status, 204);
+    assert.equal((await request(notePath, { cookie: firstSession })).status, 404);
   });
 
   await t.test("missing and inactive owners fail closed", async () => {

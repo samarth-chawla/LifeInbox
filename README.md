@@ -25,7 +25,7 @@ Open [LifeInbox locally](http://localhost:3000). The shell runs without service 
 | `npm test` | Run the Node.js HTTP smoke test against the app on `127.0.0.1:3000`. Keep either server running in another terminal. |
 | `npm run db:migrate` | Apply tracked SQL to the PostgreSQL database in `DATABASE_URL`. |
 | `npm run db:auth-schema` | Print SQL from Better Auth's schema generator for the configured database. Review the output before using it as a migration. |
-| `npm run test:auth` | Run the PostgreSQL and HTTP authentication integration tests with a local test inbox. |
+| `npm run test:auth` | Run the HTTP integration tests for authentication, accounts, and notes with a local test inbox. |
 | `npm run test:db` | Run the PostgreSQL repository, ownership, and transaction integration tests. |
 | `npm ls --workspaces --depth=0` | Inspect the workspace packages and their direct dependencies. |
 
@@ -86,6 +86,10 @@ Server repositories take the resolved LifeInbox owner ID and a PostgreSQL query 
 Apply migration `004_owner_trials.sql` with `npm run db:migrate`. A verified owner's first successful sign-in starts their seven-day trial. An owner already signed in during rollout starts on their first account request. The allowance is fixed for that trial when it starts. The account page and `GET /api/v1/me` report usage, the deadline and the end reason.
 
 Use `withTrialCreation` for new saves and to recheck an upload before finalizing it. The callback runs in a transaction that locks the active owner. Storage usage changes check the deadline and allowance again in PostgreSQL. Phase 6 will add the reservation records, private storage and cleanup that feed those counters.
+
+## Notes
+
+Sign in and select **Open notes** from the account page. Create a note with a title, text, and optional comma-separated tags. Select a saved note to edit or delete it. When a trial ends, saved notes remain available to read and delete. The notes feature uses the existing Phase 2 and Phase 3 migrations.
 
 ## PostgreSQL integration tests
 

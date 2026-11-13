@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireOwner } from "../../../server/require-owner";
@@ -58,6 +59,7 @@ export default async function AccountPage() {
           )}
         </section>
       )}
+      {account && <Link href="/notes" className="mt-6 inline-block font-medium text-accent underline underline-offset-4">Open notes</Link>}
       {owner && <SignOutButton />}
     </>
   );
