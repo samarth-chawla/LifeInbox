@@ -9,11 +9,16 @@ import { withTrialCreation } from "./trials";
 
 export async function getNotes(ownerId: string, page: number) {
   const rows = await listNoteSummaries(getPool(), ownerId, notesPageSize + 1, (page - 1) * notesPageSize);
-  return { items: rows.slice(0, notesPageSize), page, hasMore: rows.length > notesPageSize };
+  return {
+    items: rows.slice(0, notesPageSize).map((item) => ({ ...item, updatedAt: item.updatedAt.toISOString() })),
+    page,
+    hasMore: rows.length > notesPageSize,
+  };
 }
 
-export function getNote(ownerId: string, noteId: string) {
-  return readNote(getPool(), ownerId, noteId);
+export async function getNote(ownerId: string, noteId: string) {
+  const note = await readNote(getPool(), ownerId, noteId);
+  return note ? { ...note, createdAt: note.createdAt.toISOString(), updatedAt: note.updatedAt.toISOString() } : null;
 }
 
 export function saveNewNote(ownerId: string, draft: NoteDraft) {

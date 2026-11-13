@@ -1,6 +1,6 @@
 import "server-only";
 import type { Pool } from "pg";
-import { resolveTrial } from "../db/trials.ts";
+import { readCurrentAccountTrial, resolveTrial } from "../db/trials.ts";
 import { withTransaction, type DatabaseQuery } from "../db/transaction.ts";
 import { getTrialAllowanceBytes } from "../env.ts";
 
@@ -21,8 +21,9 @@ async function withOwnerTrial<T>(
   });
 }
 
-export function readAccountTrial(pool: Pool, ownerId: string) {
-  return withOwnerTrial(pool, ownerId, async (_db, trial, createdAt) => ({
+export async function readAccountTrial(pool: Pool, ownerId: string) {
+  const current = await readCurrentAccountTrial(pool, ownerId);
+  return current ?? withOwnerTrial(pool, ownerId, async (_db, trial, createdAt) => ({
     ownerId, createdAt: createdAt.toISOString(), trial,
   }));
 }

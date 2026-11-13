@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isNoteId, notesHref, parseNotesPage } from "../../lib/notes";
+import { isNoteId, parseNotesPage } from "../../lib/notes";
 import { requireOwner } from "../../server/require-owner";
 import { getAccount } from "../../server/services/account";
 import { getNote, getNotes } from "../../server/services/notes";
-import { NoteEditor } from "./note-editor";
-
-const formatDate = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
+import { NotesWorkspace } from "./notes-workspace";
 
 export default async function NotesPage({
   searchParams,
@@ -28,63 +26,32 @@ export default async function NotesPage({
     ]).catch(() => null)
     : null;
   const [account, notes, note] = data ?? [];
-  const canWrite = account?.trial.status === "active";
 
   return (
-    <main className="mx-auto min-h-dvh max-w-6xl px-6 pb-16 sm:px-10">
-      <header className="flex items-center justify-between border-b border-line py-6">
-        <Link href="/" className="text-lg font-semibold">LifeInbox</Link>
-        <Link href="/account" className="text-sm font-medium text-accent underline underline-offset-4">Account</Link>
-      </header>
-      <div className="flex flex-wrap items-end justify-between gap-4 py-8">
-        <h1 className="font-serif text-5xl tracking-tight">Notes</h1>
-        {canWrite && query.note !== undefined && (
-          <Link href={notesHref(page)} className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white">
-            New note
+    <main className="min-h-dvh bg-panel/70">
+      <header className="border-b border-line bg-paper">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link href="/" className="flex items-center gap-3 font-semibold">
+            <span aria-hidden="true" className="grid size-9 place-items-center rounded-xl bg-accent text-sm font-bold text-white">L</span>
+            LifeInbox
           </Link>
-        )}
-      </div>
-      {account && notes ? (
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <aside className="rounded-xl border border-line bg-panel p-4 sm:p-5" aria-labelledby="saved-notes">
-            <h2 id="saved-notes" className="font-semibold">Saved notes</h2>
-            {notes.items.length ? (
-              <ul className="mt-3 space-y-1">
-                {notes.items.map((item) => (
-                  <li key={item.id}>
-                    <Link
-                      href={notesHref(page, item.id)}
-                      aria-current={note?.id === item.id ? "page" : undefined}
-                      className="block rounded-lg px-3 py-2.5 hover:bg-paper aria-[current=page]:bg-paper"
-                    >
-                      <span className="block break-words font-medium">{item.title}</span>
-                      <time className="text-xs text-muted" dateTime={item.updatedAt.toISOString()}>
-                        {formatDate.format(item.updatedAt)}
-                      </time>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="mt-3 text-sm text-muted">{page > 1 ? "No notes on this page." : "No notes yet."}</p>}
-            {(page > 1 || notes.hasMore) && (
-              <nav aria-label="Notes pages" className="mt-4 flex gap-4 text-sm text-accent underline underline-offset-4">
-                {page > 1 && <Link href={notesHref(page - 1)}>Previous</Link>}
-                {notes.hasMore && <Link href={notesHref(page + 1)}>Next</Link>}
-              </nav>
-            )}
-          </aside>
-          <section aria-labelledby="note-heading" className="min-w-0 rounded-xl border border-line p-5 sm:p-7">
-            {query.note !== undefined && !note ? (
-              <>
-                <h2 id="note-heading" className="font-serif text-3xl">Note unavailable</h2>
-                <Link href={notesHref(page)} className="mt-4 inline-block text-sm text-accent underline">Back to notes</Link>
-              </>
-            ) : (
-              <NoteEditor key={note?.id ?? "new"} note={note ?? undefined} canWrite={canWrite} />
-            )}
-          </section>
+          <Link href="/account" className="rounded-lg border border-line px-3.5 py-2 text-sm font-medium hover:bg-panel">
+            Account
+          </Link>
         </div>
-      ) : <p role="alert">Your notes are currently unavailable.</p>}
+      </header>
+      <div className="mx-auto max-w-7xl px-5 pt-8 pb-12 sm:px-8 sm:pt-11">
+        <h1 className="mb-6 font-serif text-5xl tracking-tight sm:text-6xl">Notes</h1>
+        {account && notes ? (
+          <NotesWorkspace
+            key={`${page}:${typeof query.note === "string" ? query.note : "new"}`}
+            initialList={notes}
+            initialNote={note ?? null}
+            unavailable={query.note !== undefined && !note}
+            canWrite={account.trial.status === "active"}
+          />
+        ) : <p role="alert" className="rounded-xl border border-line bg-paper p-5">Your notes are currently unavailable.</p>}
+      </div>
     </main>
   );
 }
