@@ -13,7 +13,7 @@ export default defineConfig([
   {
     files: ["scripts/**/*.mjs", "tests/**/*.mjs"],
     languageOptions: {
-      globals: { AbortSignal: "readonly", Buffer: "readonly", console: "readonly", fetch: "readonly", process: "readonly", URL: "readonly" },
+      globals: { AbortController: "readonly", AbortSignal: "readonly", Buffer: "readonly", console: "readonly", fetch: "readonly", process: "readonly", URL: "readonly" },
     },
   },
 ]);

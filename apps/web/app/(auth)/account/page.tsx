@@ -59,7 +59,12 @@ export default async function AccountPage() {
           )}
         </section>
       )}
-      {account && <Link href="/notes" className="mt-6 inline-block font-medium text-accent underline underline-offset-4">Open notes</Link>}
+      {account && (
+        <nav aria-label="Workspace" className="mt-6 flex flex-wrap gap-4 font-medium text-accent underline underline-offset-4">
+          <Link href="/notes">Open notes</Link>
+          <Link href="/links">Saved links</Link>
+        </nav>
+      )}
       {owner && <SignOutButton />}
     </>
   );

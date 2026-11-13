@@ -27,6 +27,8 @@ Open [LifeInbox locally](http://localhost:3000). The shell runs without service 
 | `npm run db:auth-schema` | Print SQL from Better Auth's schema generator for the configured database. Review the output before using it as a migration. |
 | `npm run test:auth` | Run the HTTP integration tests for authentication, accounts, and notes with a local test inbox. |
 | `npm run test:db` | Run the PostgreSQL repository, ownership, and transaction integration tests. |
+| `npm run test:links` | Test URL validation, redirect handling, response limits, and HTML extraction with fixtures. |
+| `npm run worker:url` | Run the PostgreSQL worker that extracts saved links. |
 | `npm ls --workspaces --depth=0` | Inspect the workspace packages and their direct dependencies. |
 
 Each root application script delegates to `@lifeinbox/web`. To run a command directly, use `npm run <script> --workspace=@lifeinbox/web`.
@@ -90,6 +92,16 @@ Use `withTrialCreation` for new saves and to recheck an upload before finalizing
 ## Notes
 
 Sign in and select **Open notes** from the account page. Create a note with a title, text, and optional comma-separated tags. Select a saved note to edit or delete it. When a trial ends, saved notes remain available to read and delete. The notes feature uses the existing Phase 2 and Phase 3 migrations.
+
+## Saved links
+
+1. Apply migration `005_url_processing.sql` with `npm run db:migrate`.
+2. Start `npm run dev` and `npm run worker:url` in separate terminals. The worker uses the same database by default. Set `URL_WORKER_DATABASE_URL` to use a separate worker credential for that database.
+3. Sign in, select **Saved links**, and save a public URL. The link appears immediately. Open it to see the extraction status, extracted text, or a failure message and retry option.
+
+The worker handles public HTML on the default HTTP and HTTPS ports. It validates DNS at each hop, follows up to four redirects, and accepts up to 512 KiB of uncompressed HTML within a 12-second fetch deadline. Compressed responses are skipped. It extracts plain text and metadata without external AI. Run `npm run worker:url -- --once` to check the queue and handle at most one job.
+
+Transient failures receive up to three attempts per run, and eligible failed jobs allow two manual retries. Keep the worker running for retries and expired leases to be processed. Before deploying a worker, restrict its network egress to public web destinations and configure a database role with only the access it needs.
 
 ## PostgreSQL integration tests
 

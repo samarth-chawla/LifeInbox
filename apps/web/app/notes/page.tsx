@@ -35,9 +35,10 @@ export default async function NotesPage({
             <span aria-hidden="true" className="grid size-9 place-items-center rounded-xl bg-accent text-sm font-bold text-white">L</span>
             LifeInbox
           </Link>
-          <Link href="/account" className="rounded-lg border border-line px-3.5 py-2 text-sm font-medium hover:bg-panel">
-            Account
-          </Link>
+          <nav aria-label="Workspace" className="flex items-center gap-4 text-sm font-medium">
+            <Link href="/links" className="text-accent hover:underline">Saved links</Link>
+            <Link href="/account" className="rounded-lg border border-line px-3.5 py-2 hover:bg-panel">Account</Link>
+          </nav>
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-5 pt-8 pb-12 sm:px-8 sm:pt-11">

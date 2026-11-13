@@ -56,13 +56,15 @@ Migration `004_owner_trials.sql` records each owner's allowance, deadline, usage
 
 The notes page and item API use the existing items and tags tables. Note content and tag assignments save in a single transaction. The trial guard protects creation and edits, while reads and deletion remain available after expiry. Deleting a text note removes its tag assignments. See the [implemented API contract](05_API_Specification.md#3-items).
 
-## Phase 5 — PostgreSQL jobs and safe URL capture
+## Phase 5 — PostgreSQL jobs and safe URL capture (IMPLEMENTED)
 
 - **Objective and prerequisites.** Persist URL sources immediately and extract useful content through observable, retryable background processing. Requires Phase 4 and a repeatable local runner.
 - **Likely files and database.** URL capture UI, job state and retry UI, fetch/extractor and worker modules. Add `processing_jobs` with owner, target revision, lease/attempt, timestamps and safe error codes. Persist original URL, extraction status and normalized text/metadata.
 - **Dependencies and routes.** Reuse `pg`. Evaluate a maintained HTML extraction library and a fetch transport that can bind connections to vetted DNS results. Extend item creation and reads. Add proposed `POST /api/v1/items/:id/retry`. Keep queue claiming internal.
 - **Security and tests.** Restrict fetches to HTTP(S) and validated public destinations on each redirect. Deny internal and metadata networks, prevent DNS rebinding, enforce time and decompressed size limits, validate MIME and handle malformed responses. Claim jobs atomically, enforce lease ownership at commit, and use bounded retries and revision-checked idempotent writes. Test controlled DNS/redirect fixtures, duplicate claims, lease recovery, retry authorization and stale results.
 - **Acceptance and deferrals.** The original URL survives any failed fetch. A supported page is extracted without AI and errors are visible and safely retryable. Defer browser automation, authenticated scraping, Redis/BullMQ and document/OCR handlers.
+
+Migration `005_url_processing.sql` adds the URL queue and extraction fields. Saving a link writes the original and job in the same transaction. The worker validates and pins public destinations with Node HTTP(S), uses parse5 to extract plain text and metadata, and commits results only for the current lease and source revision. The Saved Links page shows progress and lets the owner retry eligible failures. See the [local runner instructions](../README.md#saved-links).
 
 ## Phase 6 — Private uploads and atomic quota accounting
 
@@ -177,4 +179,4 @@ Select hosting after measuring representative upload sizes, queue depth, OCR and
 
 ## Current handoff
 
-Phase 4 is implemented and ready for review. Phase 5 adds URL capture and background extraction.
+Phase 5 is implemented and ready for review. Phase 6 adds private file uploads and connects storage accounting to reservations and finalization.

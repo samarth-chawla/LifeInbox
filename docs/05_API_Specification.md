@@ -31,7 +31,9 @@ The list returns `{ items, page, hasMore }` with 20 note summaries per page, ord
 
 Titles allow up to 200 characters, note text up to 50,000, and each note up to 20 tags of 50 characters each. Tag names are trimmed, case-sensitive, and may not contain commas, which the notes form uses as separators.
 
-For processing status, return the current state and a safe error code if available. A proposed `POST /api/v1/items/:id/retry` accepts an eligible owner-scoped retry and deduplicates concurrent requests.
+Phase 5 adds URL items. Create with `{ "kind": "url", "originalUrl": "https://example.org/article", "title": "Optional title" }`. Creation returns 201 with the saved URL and queued status. Use `GET /api/v1/items?kind=url` for a paginated list of saved links. Detail includes the original URL, status, a safe error code, retry availability, and extracted text and metadata when available. GET and DELETE on an item ID accept an optional `kind` filter. PATCH applies to notes.
+
+`POST /api/v1/items/:id/retry` returns 202 for an eligible owner-scoped retry and 409 when the current job cannot be retried. Concurrent requests can queue the same failed job only once. Failed extraction leaves the original URL available.
 
 ## 4. Files
 

@@ -20,7 +20,9 @@
     "test": "npm run test --workspace=@lifeinbox/web --",
     "test:auth": "npm run test:auth --workspace=@lifeinbox/web --",
     "test:db": "npm run test:db --workspace=@lifeinbox/web --",
+    "test:links": "npm run test:links --workspace=@lifeinbox/web --",
     "db:migrate": "npm run db:migrate --workspace=@lifeinbox/web --",
+    "worker:url": "npm run worker:url --workspace=@lifeinbox/web --",
     "db:auth-schema": "npm run db:auth-schema --workspace=@lifeinbox/web --"
   },
   "overrides": {

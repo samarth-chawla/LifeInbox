@@ -400,8 +400,37 @@ test("Authentication and owner-scoped routes against PostgreSQL", { timeout: 120
     const secondPage = await request(`${itemsPath}?page=2`, { cookie: firstSession }).then((response) => response.json());
     assert.equal(secondPage.items.length, 1);
     assert.equal(secondPage.hasMore, false);
-    assert.equal((await request(`${itemsPath}/${url.id}`, { cookie: firstSession })).status, 404);
+    assert.equal((await request(`${itemsPath}/${url.id}?kind=note`, { cookie: firstSession })).status, 404);
     assert.equal((await request(`${itemsPath}/invalid`, { cookie: firstSession })).status, 400);
+  });
+
+  await t.test("a saved URL survives a failed extraction and only its owner can retry it", async () => {
+    const originalUrl = "https://example.org/article?ref=example#section";
+    const payload = { kind: "url", originalUrl, title: "A saved link" };
+    const saved = await request(itemsPath, { payload, cookie: firstSession });
+    assert.equal(saved.status, 201);
+    const { item } = await saved.json();
+    assert.equal(item.status, "queued");
+    assert.equal(item.originalUrl, originalUrl);
+    const path = `${itemsPath}/${item.id}`;
+    assert.equal((await request(path, { cookie: secondSession })).status, 404);
+    assert.equal((await request(`${path}/retry`, { method: "POST", cookie: firstSession })).status, 409);
+    await db.query(
+      "UPDATE lifeinbox.processing_jobs SET status = 'failed', error_code = 'HTTP_ERROR' WHERE owner_id = $1 AND item_id = $2",
+      [firstOwner.owner_id, item.id],
+    );
+    const detail = await request(path, { cookie: firstSession });
+    const failed = (await detail.json()).item;
+    assert.equal(failed.status, "failed");
+    assert.equal(failed.originalUrl, originalUrl);
+    assert.equal(failed.canRetry, true);
+    const page = await request(`/links?link=${item.id}`, { cookie: firstSession });
+    assert.match(await page.text(), /Retry extraction/);
+    assert.equal((await request(`${path}/retry`, { method: "POST", cookie: secondSession })).status, 404);
+    assert.equal((await request(`${path}/retry`, { method: "POST", cookie: firstSession })).status, 202);
+    assert.equal((await request(path, { method: "DELETE", cookie: firstSession })).status, 204);
+    const job = await db.query("SELECT 1 FROM lifeinbox.processing_jobs WHERE owner_id = $1 AND item_id = $2", [firstOwner.owner_id, item.id]);
+    assert.equal(job.rowCount, 0);
   });
 
   await t.test("an expired trial keeps the account available and reports why it ended", async () => {
@@ -425,6 +454,9 @@ test("Authentication and owner-scoped routes against PostgreSQL", { timeout: 120
     const denied = await request(itemsPath, { payload: noteDraft, cookie: firstSession });
     assert.equal(denied.status, 403);
     assert.deepEqual(await denied.json(), { code: "TRIAL_ENDED" });
+    const link = await request(itemsPath, { payload: { kind: "url", originalUrl: "https://example.org" }, cookie: firstSession });
+    assert.equal(link.status, 403);
+    assert.deepEqual(await link.json(), { code: "TRIAL_ENDED" });
     const edit = await request(notePath, { method: "PATCH", payload: { title: "Expired edit" }, cookie: firstSession });
     assert.equal(edit.status, 403);
     assert.deepEqual(await edit.json(), { code: "TRIAL_ENDED" });
